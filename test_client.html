@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MyBook Test Client (수정 버전)</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 40px;
+        background: #f2f2f2;
+      }
+      h1 {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .section {
+        background: white;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+      }
+      input,
+      button,
+      textarea {
+        display: block;
+        width: 100%;
+        margin-top: 10px;
+        margin-bottom: 15px;
+        padding: 10px;
+        box-sizing: border-box;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        transition: 0.2s;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      textarea {
+        height: 150px;
+      }
+      #result {
+        background: #e9ecef;
+        padding: 15px;
+        border-radius: 5px;
+        font-size: 14px;
+        white-space: pre-wrap;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>📚 MyBook Test Client</h1>
+
+    <div class="section">
+      <h2>회원가입</h2>
+      <input id="signup-email" type="email" placeholder="이메일 입력" />
+      <input id="signup-password" type="password" placeholder="비밀번호 입력" />
+      <button onclick="signup()">회원가입</button>
+    </div>
+
+    <div class="section">
+      <h2>로그인</h2>
+      <input id="login-email" type="email" placeholder="이메일 입력" />
+      <input id="login-password" type="password" placeholder="비밀번호 입력" />
+      <button onclick="login()">로그인</button>
+      <textarea
+        id="access-token"
+        readonly
+        placeholder="Access Token 표시 영역"
+      ></textarea>
+    </div>
+
+    <div class="section">
+      <h2>책 리스트 조회</h2>
+      <button onclick="getBooks()">책 리스트 가져오기</button>
+      <textarea id="book-list" readonly placeholder="책 리스트 결과"></textarea>
+    </div>
+
+    <div class="section">
+      <h2>책 등록</h2>
+      <input id="book-title" type="text" placeholder="책 제목 입력" />
+      <input id="book-author" type="text" placeholder="저자 입력" />
+      <input id="book-cover" type="file" />
+      <button onclick="createBook()">책 등록</button>
+    </div>
+
+    <div class="section">
+      <h2>책 수정</h2>
+      <input id="update-id" type="text" placeholder="수정할 책 ID 입력" />
+      <input id="update-title" type="text" placeholder="수정할 제목 입력" />
+      <input id="update-author" type="text" placeholder="수정할 저자 입력" />
+      <button onclick="updateBook()">책 수정</button>
+    </div>
+
+    <div class="section">
+      <h2>책 삭제</h2>
+      <input id="delete-id" type="text" placeholder="삭제할 책 ID 입력" />
+      <button onclick="deleteBook()">책 삭제</button>
+    </div>
+
+    <div class="section">
+      <h2>요청 결과</h2>
+      <div id="result"></div>
+    </div>
+
+    <script>
+      const apiBase = "http://localhost:5050";
+      let accessToken = sessionStorage.getItem("accessToken") || "";
+
+      function setAccessToken(token) {
+        accessToken = token;
+        sessionStorage.setItem("accessToken", token);
+        document.getElementById("access-token").value = token;
+      }
+
+      function showResult(data) {
+        document.getElementById("result").innerText =
+          typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      }
+
+      async function signup() {
+        const email = document.getElementById("signup-email").value;
+        const password = document.getElementById("signup-password").value;
+
+        try {
+          const res = await fetch(`${apiBase}/auth/signup`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+          const data = await res.json();
+          showResult(data);
+          alert("회원가입 완료!");
+        } catch (err) {
+          showResult(err);
+        }
+      }
+
+      async function login() {
+        const email = document.getElementById("login-email").value;
+        const password = document.getElementById("login-password").value;
+
+        try {
+          const res = await fetch(`${apiBase}/auth/login`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+          });
+          const data = await res.json();
+          setAccessToken(data.accessToken);
+          showResult(data);
+          alert("로그인 성공!");
+        } catch (err) {
+          showResult(err);
+        }
+      }
+
+      async function getBooks() {
+        try {
+          const res = await fetch(`${apiBase}/books`, {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          const data = await res.json();
+          document.getElementById("book-list").value = JSON.stringify(
+            data,
+            null,
+            2
+          );
+          showResult(data);
+        } catch (err) {
+          showResult(err);
+        }
+      }
+
+      async function createBook() {
+        const title = document.getElementById("book-title").value;
+        const author = document.getElementById("book-author").value;
+        const cover = document.getElementById("book-cover").files[0];
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("author", author);
+        if (cover) formData.append("cover", cover);
+
+        try {
+          const res = await fetch(`${apiBase}/books`, {
+            method: "POST",
+            headers: { Authorization: `Bearer ${accessToken}` },
+            body: formData,
+          });
+          const data = await res.json();
+          showResult(data);
+          alert("책 등록 완료!");
+        } catch (err) {
+          showResult(err);
+        }
+      }
+
+      async function updateBook() {
+        const id = document.getElementById("update-id").value;
+        const title = document.getElementById("update-title").value;
+        const author = document.getElementById("update-author").value;
+
+        try {
+          const res = await fetch(`${apiBase}/books/${id}`, {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({ title, author }),
+          });
+          const data = await res.json();
+          showResult(data);
+          alert("책 수정 완료!");
+        } catch (err) {
+          showResult(err);
+        }
+      }
+
+      async function deleteBook() {
+        const id = document.getElementById("delete-id").value;
+
+        try {
+          await fetch(`${apiBase}/books/${id}`, {
+            method: "DELETE",
+            headers: { Authorization: `Bearer ${accessToken}` },
+          });
+          showResult("책 삭제 완료!");
+          alert("책 삭제 완료!");
+        } catch (err) {
+          showResult(err);
+        }
+      }
+    </script>
+  </body>
+</html>
